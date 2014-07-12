@@ -9,12 +9,19 @@ import (
 
 type YoedClient interface {
 	Handle(username string)
-	GetConfig() *YoedClientConfig
+	GetConfig() *BaseYoedClientConfig
 }
 
-type YoedClientConfig struct {
+type BaseYoedClientConfig struct {
 	Listen   string `json:"listen"`
 	ServerUrl string `json:"serverUrl"`
+}
+
+type BaseYoedClient struct {
+	Config *BaseYoedClientConfig
+}
+func (c *BaseYoedClient) GetConfig() (*BaseYoedClientConfig) {
+	return c.Config
 }
 
 func Run(c YoedClient) {
@@ -24,13 +31,15 @@ func Run(c YoedClient) {
 		c.Handle(username)
 	})
 
+	config := c.GetConfig()
+
 	server := http.Server{
-		Addr:    c.GetConfig().Listen,
+		Addr:    config.Listen,
 		Handler: mux,
 	}
 
 	log.Printf("Send server Yo message...")
-	resp, err := http.PostForm(c.GetConfig().ServerUrl, url.Values{"callback_url":{"http://"+c.GetConfig().Listen}})
+	resp, err := http.PostForm(config.ServerUrl, url.Values{"callback_url":{"http://"+config.Listen}})
 
 	if err != nil {
 		panic(fmt.Sprintf("failed contacting server : %s", err))
