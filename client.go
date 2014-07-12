@@ -40,7 +40,7 @@ func Run(c YoedClient) {
 	}
 
 	log.Printf("Send server Yo message...")
-	resp, err := http.PostForm(config.ServerUrl, url.Values{"handle":{config.Handle}, "callback_url":{"http://"+config.Listen}})
+	resp, err := http.PostForm(config.ServerUrl+"/yo", url.Values{"handle":{config.Handle}, "callback_url":{"http://"+config.Listen}})
 
 	if err != nil {
 		panic(fmt.Sprintf("failed contacting server : %s", err))
