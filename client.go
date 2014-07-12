@@ -15,6 +15,7 @@ type YoedClient interface {
 type BaseYoedClientConfig struct {
 	Listen   string `json:"listen"`
 	ServerUrl string `json:"serverUrl"`
+	Handle string `json:"handle"`
 }
 
 type BaseYoedClient struct {
@@ -39,7 +40,7 @@ func Run(c YoedClient) {
 	}
 
 	log.Printf("Send server Yo message...")
-	resp, err := http.PostForm(config.ServerUrl, url.Values{"callback_url":{"http://"+config.Listen}})
+	resp, err := http.PostForm(config.ServerUrl, url.Values{"handle":{config.Handle}, "callback_url":{"http://"+config.Listen}})
 
 	if err != nil {
 		panic(fmt.Sprintf("failed contacting server : %s", err))
