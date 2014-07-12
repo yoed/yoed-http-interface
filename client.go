@@ -9,10 +9,10 @@ import (
 
 type YoedClient interface {
 	Handle(username string)
-	GetConfig() *AbstractYoedClientConfig
+	GetConfig() *YoedClientConfig
 }
 
-type AbstractYoedClientConfig struct {
+type YoedClientConfig struct {
 	Listen   string `json:"listen"`
 	ServerUrl string `json:"serverUrl"`
 }
