@@ -23,10 +23,10 @@ type BaseYoedClientConfig struct {
 }
 
 type BaseYoedClient struct {
-	Config *BaseYoedClientConfig
+	config *BaseYoedClientConfig
 }
 func (c *BaseYoedClient) GetConfig() (*BaseYoedClientConfig) {
-	return c.Config
+	return c.config
 }
 func (c *BaseYoedClient) loadConfig(configPath string) (*BaseYoedClientConfig, error) {
 	configJson, err := ReadConfig(configPath)
@@ -52,7 +52,7 @@ func NewBaseYoedClient() (*BaseYoedClient, error) {
 		panic(fmt.Sprintf("failed loading config: %s", err))
 	}
 
-	c.Config = config
+	c.config = config
 
 	return c, nil
 }
