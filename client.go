@@ -8,6 +8,7 @@ import (
 	"os"
 	"encoding/json"
 	"io/ioutil"
+	"strings"
 )
 
 type YoedClient interface {
@@ -18,7 +19,7 @@ type YoedClient interface {
 type BaseYoedClientConfig struct {
 	Listen   string `json:"listen"`
 	ServerUrl string `json:"serverUrl"`
-	Handle string `json:"handle"`
+	Handles []string `json:"handles"`
 }
 
 type BaseYoedClient struct {
@@ -87,7 +88,7 @@ func Run(c YoedClient) {
 	}
 
 	log.Printf("Send server Yo message...")
-	resp, err := http.PostForm(config.ServerUrl+"/yo", url.Values{"handle":{config.Handle}, "callback_url":{"http://"+config.Listen}})
+	resp, err := http.PostForm(config.ServerUrl+"/yo", url.Values{"handles":{strings.Join(config.Handles, ",")}, "callback_url":{"http://"+config.Listen}})
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed contacting server : %s", err))
