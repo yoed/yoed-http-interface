@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strings"
+	"github.com/cenkalti/backoff"
+	"time"
 )
 
 type YoedClient interface {
@@ -73,6 +75,49 @@ func ReadConfig(configPath string) ([]byte, error) {
 	}
 }
 
+func connect(config *BaseYoedClientConfig) error {
+	log.Printf("Send server Yo message...")
+	resp, err := http.PostForm(config.ServerUrl+"/yo", url.Values{"handles":{strings.Join(config.Handles, ",")}, "callback_url":{"http://"+config.Listen}})
+
+	log.Printf("Yoed server answer... %s", resp)
+	return err
+}
+
+func ping(config *BaseYoedClientConfig) {
+	ticker := time.NewTicker(time.Minute*5)
+
+	doPing := func() error {
+    	_, err := http.Get(config.ServerUrl)
+    	return err
+	}
+	mustReconnect := false
+	for t := range ticker.C {
+        fmt.Println("Ping server at", t)
+
+        b := backoff.NewExponentialBackOff()
+    	pingBackoffTicker := backoff.NewTicker(b)
+
+    	var err error
+    	for _ = range pingBackoffTicker.C {
+    	    if err = doPing(); err != nil {
+    	        log.Println(err, "will retry...")
+    	    	mustReconnect = true
+    	        continue
+    	    }
+
+    	    break
+    	}
+
+    	if err != nil {
+    		panic(fmt.Sprintf("Failed contacting server : %s", err))
+    	}
+
+    	if mustReconnect {
+    		connect(config)
+    	}
+    }
+}
+
 func Run(c YoedClient) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -87,14 +132,25 @@ func Run(c YoedClient) {
 		Handler: mux,
 	}
 
-	log.Printf("Send server Yo message...")
-	resp, err := http.PostForm(config.ServerUrl+"/yo", url.Values{"handles":{strings.Join(config.Handles, ",")}, "callback_url":{"http://"+config.Listen}})
+	b := backoff.NewExponentialBackOff()
+	ticker := backoff.NewTicker(b)
+
+	var err error
+	for _ = range ticker.C {
+	    if err = connect(config); err != nil {
+	        log.Println(err, "will retry...")
+	        continue
+	    }
+
+	    break
+	}
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed contacting server : %s", err))
 	}
-	log.Printf("Yoed server answer... %s", resp)
+	
 	log.Printf("Listening...")
+	go ping(config)
 	if err := server.ListenAndServe(); err != nil {
 		fmt.Println(err)
 	}
