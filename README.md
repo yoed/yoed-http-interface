@@ -1,4 +1,4 @@
-yoed-client-interface
+Yo'ed client interface
 =====================
 
 The Yo'ed clients interface and Base client.
@@ -36,4 +36,4 @@ The `GetConfig` method returns the configuration, containing the fields describe
 
 #Protocol
 
-The communication protocol with the Yo'ed server is described [here](https://github.com/yoed/yoed-server)
+The communication protocol with the Yo'ed server is described [here](https://github.com/yoed/yoed-server/blob/master/README.md#protocol)
