@@ -1,134 +1,70 @@
 package client
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
-	"log"
-	"fmt"
 	"os"
-	"encoding/json"
-	"io/ioutil"
 	"strings"
+
 	"github.com/cenkalti/backoff"
-	"time"
 )
 
-type YoedClient interface {
+type Handler interface {
 	Handle(username string)
-	GetConfig() *BaseYoedClientConfig
 }
 
-type BaseYoedClientConfig struct {
-	Listen   string `json:"listen"`
-	ServerUrl string `json:"serverUrl"`
-	Handles []string `json:"handles"`
+type Config struct {
+	Listen    string   `json:"listen"`
+	ServerUrl string   `json:"server_url"`
+	Handles   []string `json:"handles"`
 }
 
-type BaseYoedClient struct {
-	config *BaseYoedClientConfig
-}
-func (c *BaseYoedClient) GetConfig() (*BaseYoedClientConfig) {
-	return c.config
-}
-func (c *BaseYoedClient) loadConfig(configPath string) (*BaseYoedClientConfig, error) {
-	configJson, err := ReadConfig(configPath)
-
-	if err != nil {
-		return nil, err
-	}
-
-	config := &BaseYoedClientConfig{}
-
-	if err := json.Unmarshal(configJson, config); err != nil {
-		return nil, err
-	}
-
-	return config, nil
+type Client struct {
+	config  *Config
+	handler Handler
 }
 
-func NewBaseYoedClient() (*BaseYoedClient, error) {
-	c := &BaseYoedClient{}
-	config, err := c.loadConfig("./config.json")
+func LoadConfig(configPath string, v interface{}) error {
 
-	if err != nil {
-		panic(fmt.Sprintf("failed loading config: %s", err))
-	}
-
-	c.config = config
-
-	return c, nil
-}
-
-func ReadConfig(configPath string) ([]byte, error) {
 	configFile, err := os.Open(configPath)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	configJson, err := ioutil.ReadAll(configFile)
 
 	if err != nil {
-		return nil, err
-	} else {
-		return configJson, nil
+		return err
+	}
+
+	if err := json.Unmarshal(configJson, v); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func New(handler Handler, config *Config) *Client {
+	return &Client{
+		config:  config,
+		handler: handler,
 	}
 }
 
-func connect(config *BaseYoedClientConfig) error {
-	log.Printf("Send server Yo message...")
-	resp, err := http.PostForm(config.ServerUrl+"/yo", url.Values{"handles":{strings.Join(config.Handles, ",")}, "callback_url":{"http://"+config.Listen}})
-
-	log.Printf("Yoed server answer... %s", resp)
-	return err
-}
-
-func ping(config *BaseYoedClientConfig) {
-	ticker := time.NewTicker(time.Minute*5)
-
-	doPing := func() error {
-    	_, err := http.Get(config.ServerUrl)
-    	return err
-	}
-	mustReconnect := false
-	for t := range ticker.C {
-        fmt.Println("Ping server at", t)
-
-        b := backoff.NewExponentialBackOff()
-    	pingBackoffTicker := backoff.NewTicker(b)
-
-    	var err error
-    	for _ = range pingBackoffTicker.C {
-    	    if err = doPing(); err != nil {
-    	        log.Println(err, "will retry...")
-    	    	mustReconnect = true
-    	        continue
-    	    }
-
-    	    break
-    	}
-
-    	if err != nil {
-    		panic(fmt.Sprintf("Failed contacting server : %s", err))
-    	}
-
-    	if mustReconnect {
-    		connect(config)
-    	}
-    }
-}
-
-func Run(c YoedClient) {
+func (c *Client) Run() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
-		c.Handle(username)
+		c.handler.Handle(username)
 	})
 
-	config := c.GetConfig()
-
 	server := http.Server{
-		Addr:    config.Listen,
+		Addr:    c.config.Listen,
 		Handler: mux,
 	}
 
@@ -137,21 +73,35 @@ func Run(c YoedClient) {
 
 	var err error
 	for _ = range ticker.C {
-	    if err = connect(config); err != nil {
-	        log.Println(err, "will retry...")
-	        continue
-	    }
+		if err = c.connect(); err != nil {
+			log.Println(err, "will retry...")
+			continue
+		}
 
-	    break
+		break
 	}
 
 	if err != nil {
 		panic(fmt.Sprintf("Failed contacting server : %s", err))
 	}
-	
+
 	log.Printf("Listening...")
-	go ping(config)
+
 	if err := server.ListenAndServe(); err != nil {
 		fmt.Println(err)
 	}
+}
+
+func (c *Client) connect() error {
+
+	log.Printf("Send server Yo message...")
+
+	resp, err := http.PostForm(c.config.ServerUrl+"/yo", url.Values{
+		"handles":      {strings.Join(c.config.Handles, ",")},
+		"callback_url": {"http://" + c.config.Listen},
+	})
+
+	log.Printf("Yoed server answer... %s", resp)
+
+	return err
 }
