@@ -1,8 +1,8 @@
 Yo'ed client interface
 =====================
 
-The Yo'ed clients interface and Base client.
-All the Yo'ed clients should use the `BaseYoedClient` to communicate with the Yo'ed server and read the basic configuration
+The Yo'ed HTTP interface.
+All the Yo'ed handlers should use the `Client` to communicate with the Yo'ed server over HTTP (only protocol supported now).
 
 #Configuration
 
@@ -22,17 +22,15 @@ The Yo handles to monitor
 
 #Interface
  
-All the Yo'ed client must comply to the following Go interface:
+All the Yo'ed handlers must comply to the following Go interface:
 
 ````go
-type YoedClient interface {
+type Handler interface {
 	Handle(username string)
-	GetConfig() *BaseYoedClientConfig
 }
 ````
 
-The `Handle`method is the action to do when a Yo is received.
-The `GetConfig` method returns the configuration, containing the fields described above.
+The `Handle` method is the action to execute when a Yo is received.
 
 #Protocol
 
