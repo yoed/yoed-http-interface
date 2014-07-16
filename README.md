@@ -1,4 +1,4 @@
-Yo'ed client interface
+Yo'ed HTTP interface
 =====================
 
 The Yo'ed HTTP interface.
