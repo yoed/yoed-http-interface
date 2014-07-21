@@ -14,7 +14,7 @@ import (
 )
 
 type Handler interface {
-	Handle(username string)
+	Handle(username, handle string)
 }
 
 type Config struct {
@@ -60,7 +60,9 @@ func (c *Client) Run() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
-		c.handler.Handle(username)
+		handle := r.FormValue("handle")
+		log.Printf("Yo'ed by %s on handle %s", username, handle)
+		c.handler.Handle(username, handle)
 	})
 
 	server := http.Server{
